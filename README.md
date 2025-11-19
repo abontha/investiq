@@ -21,7 +21,11 @@ The stack pairs a FastAPI backend (FinRL + Stable-Baselines3 + yfinance) with a 
 cd backend
 pip install -r requirements.txt
 python3 train_model.py          # builds backend/ppo_model.zip (default AAPL)
+# local dev server
 uvicorn app.main:app --reload --port 8000
+
+# production entry point used by Railway/Procfiles
+python3 main.py
 ```
 
 FinRL’s import path eagerly loads optional data processors, so the requirements file includes the extra adapters (`wrds`, `alpaca-trade-api`, `exchange-calendars`, etc.) needed to avoid runtime import errors. Rerun `python3 train_model.py --symbol MSFT --timesteps 20000` anytime you want to refresh the PPO weights.
@@ -60,6 +64,19 @@ Set `VITE_API_BASE_URL` in a `.env` file (defaults to `http://localhost:8000`). 
 - Shared symbol search component driving Prediction + Backtesting workflows
 - TradingView-style line charts powered by `lightweight-charts`
 - KPI cards, animated loaders, graceful error banners, timeframe toggle, and persistent disclaimers
+
+---
+
+## Deploying to Railway
+
+This repository now ships with the wiring Railway expects:
+
+1. **Backend service** – point Railway at `/backend`. The included `main.py` simply runs `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, so you can leave “Start Command” empty or set it explicitly to the same value. Make sure `backend/ppo_model.zip` is committed, because the FastAPI router loads it at boot.
+2. **Frontend service** – point Railway at `/frontend` with `npm install && npm run build` as the build command and `npm run preview -- --host 0.0.0.0 --port $PORT` as the start command.
+3. **Env vars** – set `VITE_API_BASE_URL` in the frontend service to the public URL of the backend service, and (optionally) narrow the backend’s `FINRL_CORS_ORIGINS` to your production domains (e.g., `https://investiq.cc,https://www.investiq.cc`).
+4. **Domains** – attach `investiq.cc` (and `www`) to the frontend service via Railway’s Domains tab, update DNS to the provided CNAME, then verify.
+
+Once these two services deploy successfully, every push to `main` will trigger fresh Railway builds using the committed configuration.
 
 ---
 
