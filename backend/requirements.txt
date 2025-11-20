@@ -13,3 +13,4 @@ stockstats==0.6.5
 exchange-calendars==4.5.6
 wrds==3.4.0
 alpaca-trade-api==3.1.0
+PyYAML==6.0.2
