@@ -11,7 +11,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from finrl.agents.stablebaselines3.models import DRLAgent, data_split
 from finrl.config import INDICATORS
 from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
@@ -20,6 +19,7 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from .config import settings
+from .yfinance_client import download_price_history
 
 DISCLAIMER_TEXT = (
     "Educational use only. These FinRL-driven simulations are NOT financial advice."
@@ -109,13 +109,10 @@ class FinRLService:
     def _download_market_data(self, symbol: str) -> pd.DataFrame:
         end = datetime.utcnow()
         start = end - timedelta(days=365 * settings.lookback_years)
-        data = yf.download(
-            symbol,
-            start=start,
-            end=end,
-            auto_adjust=False,
-            progress=False,
-        )
+        try:
+            data = download_price_history(symbol, start, end)
+        except RuntimeError as exc:
+            raise FinRLException(str(exc)) from exc
         if data.empty:
             raise FinRLException(
                 f"No Yahoo Finance data returned for {symbol}. Check the ticker symbol."

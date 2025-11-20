@@ -11,7 +11,6 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from finrl.agents.stablebaselines3.models import DRLAgent
@@ -21,6 +20,7 @@ from finrl.meta.preprocessor.preprocessors import FeatureEngineer
 from stable_baselines3 import PPO
 
 from ..schemas import PredictionResponse, SymbolRequest
+from ..yfinance_client import download_price_history
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "ppo_model.zip"
 LOOKBACK_DAYS = 365
@@ -51,13 +51,10 @@ def _load_model() -> PPO:
 def _fetch_market_data(symbol: str) -> pd.DataFrame:
     end = datetime.utcnow()
     start = end - timedelta(days=LOOKBACK_DAYS)
-    data = yf.download(
-        symbol,
-        start=start,
-        end=end,
-        auto_adjust=False,
-        progress=False,
-    )
+    try:
+        data = download_price_history(symbol, start, end)
+    except RuntimeError as exc:
+        raise ValueError(str(exc)) from exc
     if data.empty:
         raise ValueError(f"No Yahoo Finance data returned for {symbol}.")
     if isinstance(data.columns, pd.MultiIndex):

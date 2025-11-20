@@ -9,12 +9,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
-import yfinance as yf
 from finrl.agents.stablebaselines3.models import DRLAgent
 from finrl.config import INDICATORS
 from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer
 from stable_baselines3.common.vec_env import DummyVecEnv
+
+from app.yfinance_client import download_price_history
 
 MODEL_PATH = Path(__file__).resolve().parent / "ppo_model.zip"
 LOOKBACK_DAYS = 365
@@ -23,7 +24,7 @@ LOOKBACK_DAYS = 365
 def _fetch_data(symbol: str) -> pd.DataFrame:
     end = datetime.utcnow()
     start = end - timedelta(days=LOOKBACK_DAYS)
-    data = yf.download(symbol, start=start, end=end, auto_adjust=False, progress=False)
+    data = download_price_history(symbol, start, end)
     if data.empty:
         raise RuntimeError(f"No Yahoo Finance data returned for {symbol}.")
     if isinstance(data.columns, pd.MultiIndex):
@@ -112,4 +113,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
